@@ -1,11 +1,11 @@
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
 #include <limits>
 #include <string>
 #define FILAS 200
 #define COLUMNAS 200
+#define LINEAS_POR_PAGINA 20
 
 using namespace std;
 
@@ -46,6 +46,10 @@ void esperarEnter();
 void cargaArchivoDeAtaque(Orden **orden);
 bool esAledana(int x1, int y1, int x2, int y2);
 bool coordenadaValida(int x, int y);
+
+///Opcion 2
+void mostrarAtaqueCargado(Orden **orden);
+string descripcionOrden(const Orden &o);
 
 int main()
 {
@@ -108,6 +112,8 @@ void cargarMenuPrincipal(Orden **orden){
             }
         } while(!opcionValida);
 
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
         system("cls");
 
         switch(op){
@@ -115,6 +121,7 @@ void cargarMenuPrincipal(Orden **orden){
             cargaArchivoDeAtaque(orden);
             break;
         case 2:
+            mostrarAtaqueCargado(orden);
             break;
         case 3:
             break;
@@ -148,7 +155,7 @@ bool coordenadaValida(int x, int y)
     if (x >= 0 && x < FILAS && y >= 0 && y < COLUMNAS){
         return true;
     }
-    else false;
+    else return false;
 }
 
 // Verifica si corresponde a la celda siguiente
@@ -170,9 +177,9 @@ void cargaArchivoDeAtaque(Orden **orden)
     cout << "=========================================="<<endl;
     cout << endl << endl;
     cout << "Ingrese la ruta del archivo: ";
-    cin >> ruta;
+    cin.getline(ruta, sizeof(ruta));
     cout << endl << "Ingrese el nombre del archivo: ";
-    cin >> nombre;
+    cin.getline(nombre, sizeof(nombre));
 
     snprintf(rutaCompleta, sizeof(rutaCompleta), "%s%s", ruta, nombre);
 
@@ -204,10 +211,9 @@ void cargaArchivoDeAtaque(Orden **orden)
     }
 
     // 2) Validaciones
-    bool **ocupada = new bool*[FILAS];
+    static bool ocupada[FILAS][COLUMNAS];
     for (int i = 0; i < FILAS; i++)
     {
-        ocupada[i] = new bool[COLUMNAS];
         for (int j = 0; j < COLUMNAS; j++) ocupada[i][j] = false;
     }
 
@@ -275,15 +281,13 @@ void cargaArchivoDeAtaque(Orden **orden)
     //3) Validar que la ruta sea continua
     if (archivoValido)
     {
-        bool **visitada = new bool*[FILAS];
+        static bool visitada[FILAS][COLUMNAS];
         for (int i = 0; i < FILAS; i++)
         {
-            visitada[i] = new bool[COLUMNAS];
             for (int j = 0; j < COLUMNAS; j++) visitada[i][j] = false;
         }
 
         int x = xDespegue, y = yDespegue;
-        int pasos = 0;
         bool llego = false;
 
         while (archivoValido && !llego)
@@ -301,7 +305,6 @@ void cargaArchivoDeAtaque(Orden **orden)
                 break;
             }
             visitada[x][y] = true;
-            pasos++;
 
             if (x == xFinal && y == yFinal)
             {
@@ -339,15 +342,6 @@ void cargaArchivoDeAtaque(Orden **orden)
             x = nx;
             y = ny;
         }
-
-        if (archivoValido && pasos != cantidad)
-        {
-            archivoValido = false;
-            error = "La ruta no pasa por todos los registros del archivo (hay celdas sueltas, desconectadas del camino).";
-        }
-
-        for (int i = 0; i < FILAS; i++) delete[] visitada[i];
-        delete[] visitada;
     }
 
     //4) Resultado
@@ -383,12 +377,82 @@ void cargaArchivoDeAtaque(Orden **orden)
             o.cargada = true;
         }
 
-        cout << endl << "Archivo cargado correctamente en memoria (" << cantidad << " registros)." << endl;
+        cout << endl << "Archivo cargado correctamente." << endl;
     }
 
-    for (int i = 0; i < FILAS; i++) delete[] ocupada[i];
-    delete[] ocupada;
     delete[] registros;
+
+    esperarEnter();
+}
+
+/// ---------------------------------------------------------------------
+/// OPCION 2: Mostrar ataque cargado
+/// ---------------------------------------------------------------------
+
+string descripcionOrden(const Orden &o)
+{
+    string desc = "";
+
+    if (o.despegue) desc += "DESPEGUE ";
+    if (o.aterrizaje) desc += "ATERRIZAJE ";
+    if (o.soltarGranada1) desc += "GRANADA1 ";
+    if (o.soltarGranada2) desc += "GRANADA2 ";
+    if (o.ataqueKamikaze) desc += "KAMIKAZE ";
+    if (o.espera > 0) desc += "ESPERA=" + to_string(o.espera) + " ";
+
+    desc += "-> (" + to_string(o.siguientex) + "," + to_string(o.siguientey) + ")";
+
+    return desc;
+}
+
+void mostrarAtaqueCargado(Orden **orden)
+{
+    int cantidad = 0;
+    for (int i = 0; i < FILAS; i++)
+    {
+        for (int j = 0; j < COLUMNAS; j++)
+        {
+            if (orden[i][j].cargada) cantidad++;
+        }
+    }
+
+    cout << "=========================================="<<endl;
+    cout << "Opcion 2 - Ataque cargado en memoria"<<endl;
+    cout << "=========================================="<<endl<<endl;
+
+    if (cantidad == 0)
+    {
+        cout << "No hay ningun ataque cargado en memoria." << endl;
+        esperarEnter();
+        return;
+    }
+    int mostrados = 0;
+    int enEstaPagina = 0;
+
+    cout << "  X    Y    ORDEN" << endl;
+    cout << "----------------------------------------------------" << endl;
+
+    for (int i = 0; i < FILAS; i++)
+    {
+        for (int j = 0; j < COLUMNAS; j++)
+        {
+            if (!orden[i][j].cargada) continue;
+
+            cout << i << "    " << j << "    " << descripcionOrden(orden[i][j]) << endl;
+            mostrados++;
+            enEstaPagina++;
+
+            if (enEstaPagina == LINEAS_POR_PAGINA && mostrados < cantidad)
+            {
+                cout << endl << "-- Presione ENTER para ver mas --";
+                cin.get();
+                system("cls");
+                cout << "  X    Y    ORDEN" << endl;
+                cout << "----------------------------------------------------" << endl;
+                enEstaPagina = 0;
+            }
+        }
+    }
 
     esperarEnter();
 }
