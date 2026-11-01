@@ -51,6 +51,11 @@ bool coordenadaValida(int x, int y);
 void mostrarAtaqueCargado(Orden **orden);
 string descripcionOrden(const Orden &o);
 
+///Opcion 3
+void crearArchivoDeAtaque();
+int leerEntero(const string &mensaje);
+bool leerSiNo(const string &mensaje);
+
 int main()
 {
     Orden **orden = iniciarMatrizOrden();
@@ -124,6 +129,7 @@ void cargarMenuPrincipal(Orden **orden){
             mostrarAtaqueCargado(orden);
             break;
         case 3:
+            crearArchivoDeAtaque();
             break;
         case 4:
             break;
@@ -393,12 +399,12 @@ string descripcionOrden(const Orden &o)
 {
     string desc = "";
 
-    if (o.despegue) desc += "DESPEGUE ";
-    if (o.aterrizaje) desc += "ATERRIZAJE ";
-    if (o.soltarGranada1) desc += "GRANADA1 ";
-    if (o.soltarGranada2) desc += "GRANADA2 ";
-    if (o.ataqueKamikaze) desc += "KAMIKAZE ";
-    if (o.espera > 0) desc += "ESPERA=" + to_string(o.espera) + " ";
+    if (o.despegue)        desc += "DESPEGUE ";
+    if (o.aterrizaje)      desc += "ATERRIZAJE ";
+    if (o.soltarGranada1)  desc += "GRANADA1 ";
+    if (o.soltarGranada2)  desc += "GRANADA2 ";
+    if (o.ataqueKamikaze)  desc += "KAMIKAZE ";
+    if (o.espera > 0)      desc += "ESPERA=" + to_string(o.espera) + " ";
 
     desc += "-> (" + to_string(o.siguientex) + "," + to_string(o.siguientey) + ")";
 
@@ -426,6 +432,7 @@ void mostrarAtaqueCargado(Orden **orden)
         esperarEnter();
         return;
     }
+
     int mostrados = 0;
     int enEstaPagina = 0;
 
@@ -453,6 +460,105 @@ void mostrarAtaqueCargado(Orden **orden)
             }
         }
     }
+
+    esperarEnter();
+}
+
+/// ---------------------------------------------------------------------
+/// OPCION 3: Crear un archivo de ataque nuevo
+/// ---------------------------------------------------------------------
+
+int leerEntero(const string &mensaje)
+{
+    int valor;
+    cout << mensaje;
+    cin >> valor;
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    return valor;
+}
+
+bool leerSiNo(const string &mensaje)
+{
+    char resp;
+    do
+    {
+        cout << mensaje << " (s/n): ";
+        cin >> resp;
+    } while (resp != 's' && resp != 'S' && resp != 'n' && resp != 'N');
+
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
+    return (resp == 's' || resp == 'S');
+}
+
+void crearArchivoDeAtaque()
+{
+    char ruta[260];
+    char nombre[100];
+    char rutaCompleta[400];
+
+    cout << "=========================================="<<endl;
+    cout << "Opcion 3 - Crear archivo de ataque nuevo"<<endl;
+    cout << "=========================================="<<endl;
+    cout << endl << endl;
+    cout << "Ingrese la ruta del archivo: ";
+    cin.getline(ruta, sizeof(ruta));
+    cout << endl << "Ingrese el nombre del archivo: ";
+    cin.getline(nombre, sizeof(nombre));
+
+    snprintf(rutaCompleta, sizeof(rutaCompleta), "%s%s", ruta, nombre);
+
+    FILE *f = fopen(rutaCompleta, "wb");
+    if (f == NULL)
+    {
+        cout << endl << "HUBO UN ERROR AL CREAR EL ARCHIVO." << endl;
+        esperarEnter();
+        return;
+    }
+
+    int cantidad;
+    do
+    {
+        cantidad = leerEntero("\nCuantos registros desea ingresar? ");
+        if (cantidad <= 0)
+        {
+            cout << "Debe ingresar al menos un registro." << endl;
+        }
+    } while (cantidad <= 0);
+
+    for (int i = 0; i < cantidad; i++)
+    {
+        OrdenArchivo registro;
+
+        cout << endl << "--- Registro " << (i + 1) << " de " << cantidad << " ---" << endl;
+
+        do
+        {
+            registro.x = leerEntero("Posicion X (0-199): ");
+            registro.y = leerEntero("Posicion Y (0-199): ");
+
+            if (!coordenadaValida(registro.x, registro.y))
+            {
+                cout << "Coordenadas fuera de rango. Vuelva a ingresarlas." << endl;
+            }
+
+        } while (!coordenadaValida(registro.x, registro.y));
+
+        registro.despegue = leerSiNo("Es orden de despegue?");
+        registro.aterrizaje = leerSiNo("Es orden de aterrizaje?");
+        registro.soltarGranada1 = leerSiNo("Suelta granada 1?");
+        registro.soltarGranada2 = leerSiNo("Suelta granada 2?");
+        registro.ataqueKamikaze = leerSiNo("Es ataque kamikaze?");
+        registro.espera = (int) leerEntero("Tiempo de espera: ");
+        registro.siguientex = leerEntero("Siguiente posicion X: ");
+        registro.siguientey = leerEntero("Siguiente posicion Y: ");
+
+        fwrite(&registro, sizeof(OrdenArchivo), 1, f);
+    }
+
+    fclose(f);
+
+    cout << endl << "Archivo creado correctamente." << endl;
 
     esperarEnter();
 }
