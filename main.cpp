@@ -55,6 +55,11 @@ string descripcionOrden(const Orden &o);
 void crearArchivoDeAtaque();
 int leerEntero(const string &mensaje);
 bool leerSiNo(const string &mensaje);
+void pedirDatosOrden(OrdenArchivo &registro);
+
+///Opcion 4
+void corregirRegistroDeArchivo();
+void mostrarRegistro(const OrdenArchivo &r);
 
 int main()
 {
@@ -132,6 +137,7 @@ void cargarMenuPrincipal(Orden **orden){
             crearArchivoDeAtaque();
             break;
         case 4:
+            corregirRegistroDeArchivo();
             break;
         case 5:
             break;
@@ -491,6 +497,18 @@ bool leerSiNo(const string &mensaje)
     return (resp == 's' || resp == 'S');
 }
 
+void pedirDatosOrden(OrdenArchivo &registro)
+{
+    registro.despegue       = leerSiNo("Es orden de despegue?");
+    registro.aterrizaje     = leerSiNo("Es orden de aterrizaje?");
+    registro.soltarGranada1 = leerSiNo("Suelta granada 1?");
+    registro.soltarGranada2 = leerSiNo("Suelta granada 2?");
+    registro.ataqueKamikaze = leerSiNo("Es ataque kamikaze?");
+    registro.espera         = (unsigned int) leerEntero("Tiempo de espera: ");
+    registro.siguientex     = leerEntero("Siguiente posicion X: ");
+    registro.siguientey     = leerEntero("Siguiente posicion Y: ");
+}
+
 void crearArchivoDeAtaque()
 {
     char ruta[260];
@@ -544,14 +562,7 @@ void crearArchivoDeAtaque()
 
         } while (!coordenadaValida(registro.x, registro.y));
 
-        registro.despegue = leerSiNo("Es orden de despegue?");
-        registro.aterrizaje = leerSiNo("Es orden de aterrizaje?");
-        registro.soltarGranada1 = leerSiNo("Suelta granada 1?");
-        registro.soltarGranada2 = leerSiNo("Suelta granada 2?");
-        registro.ataqueKamikaze = leerSiNo("Es ataque kamikaze?");
-        registro.espera = (int) leerEntero("Tiempo de espera: ");
-        registro.siguientex = leerEntero("Siguiente posicion X: ");
-        registro.siguientey = leerEntero("Siguiente posicion Y: ");
+        pedirDatosOrden(registro);
 
         fwrite(&registro, sizeof(OrdenArchivo), 1, f);
     }
@@ -559,6 +570,84 @@ void crearArchivoDeAtaque()
     fclose(f);
 
     cout << endl << "Archivo creado correctamente." << endl;
+
+    esperarEnter();
+}
+
+/// ---------------------------------------------------------------------
+/// OPCION 4: Corregir un registro del archivo
+/// ---------------------------------------------------------------------
+
+void mostrarRegistro(const OrdenArchivo &r)
+{
+    cout << "Posicion:            (" << r.x << "," << r.y << ")" << endl;
+    cout << "Despegue:            " << (r.despegue ? "si" : "no") << endl;
+    cout << "Aterrizaje:          " << (r.aterrizaje ? "si" : "no") << endl;
+    cout << "Granada 1:           " << (r.soltarGranada1 ? "si" : "no") << endl;
+    cout << "Granada 2:           " << (r.soltarGranada2 ? "si" : "no") << endl;
+    cout << "Ataque kamikaze:     " << (r.ataqueKamikaze ? "si" : "no") << endl;
+    cout << "Espera:              " << r.espera << endl;
+    cout << "Siguiente posicion:  (" << r.siguientex << "," << r.siguientey << ")" << endl;
+}
+
+void corregirRegistroDeArchivo()
+{
+    char ruta[260];
+    char nombre[100];
+    char rutaCompleta[400];
+
+    cout << "=========================================="<<endl;
+    cout << "Opcion 4 - Corregir un registro del archivo"<<endl;
+    cout << "=========================================="<<endl;
+    cout << endl << endl;
+    cout << "Ingrese la ruta del archivo: ";
+    cin.getline(ruta, sizeof(ruta));
+    cout << endl << "Ingrese el nombre del archivo: ";
+    cin.getline(nombre, sizeof(nombre));
+
+    snprintf(rutaCompleta, sizeof(rutaCompleta), "%s%s", ruta, nombre);
+
+    FILE *f = fopen(rutaCompleta, "r+b");
+    if (f == NULL)
+    {
+        cout << endl << "HUBO UN ERROR AL ABRIR EL ARCHIVO." << endl;
+        esperarEnter();
+        return;
+    }
+
+    int x = leerEntero("\nPosicion X del registro a corregir: ");
+    int y = leerEntero("Posicion Y del registro a corregir: ");
+
+    OrdenArchivo registro;
+    bool encontrado = false;
+
+    while (!encontrado && fread(&registro, sizeof(OrdenArchivo), 1, f) == 1)
+    {
+        if (registro.x == x && registro.y == y)
+        {
+            encontrado = true;
+        }
+    }
+
+    if (!encontrado)
+    {
+        cout << endl << "No existe un registro en esa posicion." << endl;
+    }
+    else
+    {
+        cout << endl << "Registro actual:" << endl << endl;
+        mostrarRegistro(registro);
+
+        cout << endl << "Ingrese los nuevos datos:" << endl;
+        pedirDatosOrden(registro);
+
+        fseek(f, -(long) sizeof(OrdenArchivo), SEEK_CUR);
+        fwrite(&registro, sizeof(OrdenArchivo), 1, f);
+
+        cout << endl << "Registro corregido correctamente." << endl;
+    }
+
+    fclose(f);
 
     esperarEnter();
 }
