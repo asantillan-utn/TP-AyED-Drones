@@ -61,6 +61,16 @@ void pedirDatosOrden(OrdenArchivo &registro);
 void corregirRegistroDeArchivo();
 void mostrarRegistro(const OrdenArchivo &r);
 
+///Opcion 5
+void corregirRegistroEnMemoria(Orden **orden);
+
+///Opcion 6
+void guardarMemoriaEnArchivo(Orden **orden);
+
+///Opcion 7
+void visualizarAtaqueEnHtml(Orden **orden);
+const char* claseOrden(const Orden &o);
+
 int main()
 {
     Orden **orden = iniciarMatrizOrden();
@@ -140,10 +150,13 @@ void cargarMenuPrincipal(Orden **orden){
             corregirRegistroDeArchivo();
             break;
         case 5:
+            corregirRegistroEnMemoria(orden);
             break;
         case 6:
+            guardarMemoriaEnArchivo(orden);
             break;
         case 7:
+            visualizarAtaqueEnHtml(orden);
             break;
         case 0:
             cout << "Saliendo del programa..."<<endl;
@@ -648,6 +661,327 @@ void corregirRegistroDeArchivo()
     }
 
     fclose(f);
+
+    esperarEnter();
+}
+
+/// ---------------------------------------------------------------------
+/// OPCION 5: Corregir un registro en memoria
+/// ---------------------------------------------------------------------
+
+void corregirRegistroEnMemoria(Orden **orden)
+{
+    cout << "=========================================="<<endl;
+    cout << "Opcion 5 - Corregir un registro en memoria"<<endl;
+    cout << "=========================================="<<endl;
+    cout << endl << endl;
+
+    int x = leerEntero("Posicion X del registro a corregir: ");
+    int y = leerEntero("Posicion Y del registro a corregir: ");
+
+    if (!coordenadaValida(x, y))
+    {
+        cout << endl << "Las coordenadas estan fuera de la tabla (0-199)." << endl;
+        esperarEnter();
+        return;
+    }
+
+    if (!orden[x][y].cargada)
+    {
+        cout << endl << "No existe un registro en esa posicion." << endl;
+        esperarEnter();
+        return;
+    }
+
+    OrdenArchivo registro;
+    registro.x = x;
+    registro.y = y;
+    registro.espera = orden[x][y].espera;
+    registro.soltarGranada1 = orden[x][y].soltarGranada1;
+    registro.soltarGranada2 = orden[x][y].soltarGranada2;
+    registro.ataqueKamikaze = orden[x][y].ataqueKamikaze;
+    registro.aterrizaje = orden[x][y].aterrizaje;
+    registro.despegue = orden[x][y].despegue;
+    registro.siguientex = orden[x][y].siguientex;
+    registro.siguientey = orden[x][y].siguientey;
+
+    cout << endl << "Registro actual:" << endl << endl;
+    mostrarRegistro(registro);
+
+    cout << endl << "Ingrese los nuevos datos:" << endl;
+    pedirDatosOrden(registro);
+
+    orden[x][y].espera = registro.espera;
+    orden[x][y].soltarGranada1 = registro.soltarGranada1;
+    orden[x][y].soltarGranada2 = registro.soltarGranada2;
+    orden[x][y].ataqueKamikaze = registro.ataqueKamikaze;
+    orden[x][y].aterrizaje = registro.aterrizaje;
+    orden[x][y].despegue = registro.despegue;
+    orden[x][y].siguientex = registro.siguientex;
+    orden[x][y].siguientey = registro.siguientey;
+
+    cout << endl << "Registro corregido correctamente." << endl;
+
+    esperarEnter();
+}
+
+/// ---------------------------------------------------------------------
+/// OPCION 6: Guardar memoria en un archivo nuevo
+/// ---------------------------------------------------------------------
+
+void guardarMemoriaEnArchivo(Orden **orden)
+{
+    char ruta[260];
+    char nombre[100];
+    char rutaCompleta[400];
+
+    cout << "=========================================="<<endl;
+    cout << "Opcion 6 - Guardar memoria en un archivo nuevo"<<endl;
+    cout << "=========================================="<<endl;
+    cout << endl << endl;
+
+    int cantidad = 0;
+    for (int i = 0; i < FILAS; i++)
+    {
+        for (int j = 0; j < COLUMNAS; j++)
+        {
+            if (orden[i][j].cargada) cantidad++;
+        }
+    }
+
+    if (cantidad == 0)
+    {
+        cout << "No hay ningun ataque cargado en memoria." << endl;
+        esperarEnter();
+        return;
+    }
+
+    cout << "Ingrese la ruta del archivo: ";
+    cin.getline(ruta, sizeof(ruta));
+    cout << endl << "Ingrese el nombre del archivo: ";
+    cin.getline(nombre, sizeof(nombre));
+
+    snprintf(rutaCompleta, sizeof(rutaCompleta), "%s%s", ruta, nombre);
+
+    FILE *f = fopen(rutaCompleta, "wb");
+    if (f == NULL)
+    {
+        cout << endl << "HUBO UN ERROR AL CREAR EL ARCHIVO." << endl;
+        esperarEnter();
+        return;
+    }
+
+    for (int i = 0; i < FILAS; i++)
+    {
+        for (int j = 0; j < COLUMNAS; j++)
+        {
+            if (!orden[i][j].cargada) continue;
+
+            OrdenArchivo registro;
+            registro.x = i;
+            registro.y = j;
+            registro.espera = orden[i][j].espera;
+            registro.soltarGranada1 = orden[i][j].soltarGranada1;
+            registro.soltarGranada2 = orden[i][j].soltarGranada2;
+            registro.ataqueKamikaze = orden[i][j].ataqueKamikaze;
+            registro.aterrizaje = orden[i][j].aterrizaje;
+            registro.despegue = orden[i][j].despegue;
+            registro.siguientex = orden[i][j].siguientex;
+            registro.siguientey = orden[i][j].siguientey;
+
+            fwrite(&registro, sizeof(OrdenArchivo), 1, f);
+        }
+    }
+
+    fclose(f);
+
+    cout << endl << "Archivo guardado correctamente." << endl;
+
+    esperarEnter();
+}
+
+/// ---------------------------------------------------------------------
+/// OPCION 7: Visualizar el ataque en memoria en un archivo html
+/// ---------------------------------------------------------------------
+
+const char* claseOrden(const Orden &o)
+{
+    if (o.despegue) return "despegue";
+    if (o.aterrizaje) return "aterrizaje";
+    if (o.soltarGranada1) return "granada1";
+    if (o.soltarGranada2) return "granada2";
+    if (o.ataqueKamikaze) return "kamikaze";
+    if (o.espera > 0) return "espera";
+    return "mover";
+}
+
+void visualizarAtaqueEnHtml(Orden **orden)
+{
+    char ruta[260];
+    char nombre[100];
+    char rutaCompleta[400];
+
+    cout << "=========================================="<<endl;
+    cout << "Opcion 7 - Visualizar el ataque en html"<<endl;
+    cout << "=========================================="<<endl;
+    cout << endl << endl;
+
+    int cantidad = 0;
+    for (int i = 0; i < FILAS; i++)
+    {
+        for (int j = 0; j < COLUMNAS; j++)
+        {
+            if (orden[i][j].cargada) cantidad++;
+        }
+    }
+
+    if (cantidad == 0)
+    {
+        cout << "No hay ningun ataque cargado en memoria." << endl;
+        esperarEnter();
+        return;
+    }
+
+    cout << "Ingrese la ruta del archivo: ";
+    cin.getline(ruta, sizeof(ruta));
+    cout << endl << "Ingrese el nombre del archivo (con extension .html): ";
+    cin.getline(nombre, sizeof(nombre));
+
+    snprintf(rutaCompleta, sizeof(rutaCompleta), "%s%s", ruta, nombre);
+
+    FILE *f = fopen(rutaCompleta, "w");
+    if (f == NULL)
+    {
+        cout << endl << "HUBO UN ERROR AL CREAR EL ARCHIVO." << endl;
+        esperarEnter();
+        return;
+    }
+
+    fprintf(f, "<!DOCTYPE html>\n");
+    fprintf(f, "<html lang=\"es\">\n");
+    fprintf(f, "<head>\n");
+    fprintf(f, "<meta charset=\"UTF-8\">\n");
+    fprintf(f, "<title>Vista previa - archivo de ataque</title>\n");
+    fprintf(f, "<style>\n");
+    fprintf(f, "body{margin:0;padding:24px;background:#0a1512;color:#d9f2e4;font-family:monospace;}\n");
+    fprintf(f, "h1{margin:0 0 6px;font-size:22px;}\n");
+    fprintf(f, "h2{margin:24px 0 10px;color:#6f9c85;font-size:12px;font-weight:normal;}\n");
+    fprintf(f, "p{margin:0 0 16px;color:#6f9c85;font-size:13px;}\n");
+    fprintf(f, ".leyenda{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:16px;font-size:12px;}\n");
+    fprintf(f, ".leyenda div{display:flex;align-items:center;gap:6px;}\n");
+    fprintf(f, ".contenedor{overflow:auto;max-height:75vh;border:1px solid #1d3a2f;}\n");
+    fprintf(f, "table{border-collapse:collapse;}\n");
+    fprintf(f, ".grilla td,.grilla th{width:24px;min-width:24px;height:24px;padding:0;text-align:center;font-size:10px;border:1px solid #16302a;}\n");
+    fprintf(f, ".grilla th{position:sticky;background:#0f1e19;color:#6f9c85;font-weight:normal;}\n");
+    fprintf(f, ".grilla thead th{top:0;z-index:1;}\n");
+    fprintf(f, ".grilla tbody th{left:0;}\n");
+    fprintf(f, ".grilla thead th:first-child{left:0;z-index:2;}\n");
+    fprintf(f, ".marca{display:inline-block;width:24px;height:24px;line-height:24px;text-align:center;font-size:10px;}\n");
+    fprintf(f, ".despegue{background:#ffb300;color:#0a1512;}\n");
+    fprintf(f, ".aterrizaje{background:#4dd0e1;color:#0a1512;}\n");
+    fprintf(f, ".granada1{background:#ff6a4d;color:#0a1512;}\n");
+    fprintf(f, ".granada2{background:#ff9a4d;color:#0a1512;}\n");
+    fprintf(f, ".kamikaze{background:#ff3b3b;color:#0a1512;}\n");
+    fprintf(f, ".espera{background:#5a4a14;color:#ffb300;}\n");
+    fprintf(f, ".mover{background:#1d3a2f;color:#ffb300;}\n");
+    fprintf(f, ".despegue::before{content:'D';}\n");
+    fprintf(f, ".aterrizaje::before{content:'A';}\n");
+    fprintf(f, ".granada1::before{content:'1';}\n");
+    fprintf(f, ".granada2::before{content:'2';}\n");
+    fprintf(f, ".kamikaze::before{content:'K';}\n");
+    fprintf(f, ".espera::before{content:'E';}\n");
+    fprintf(f, ".mover::before{content:'*';}\n");
+    fprintf(f, ".registros{font-size:12px;}\n");
+    fprintf(f, ".registros th,.registros td{padding:5px 10px;text-align:left;white-space:nowrap;border-bottom:1px solid #16302a;}\n");
+    fprintf(f, ".registros th{color:#d9f2e4;font-weight:normal;}\n");
+    fprintf(f, ".registros td{color:#6f9c85;}\n");
+    fprintf(f, "</style>\n");
+    fprintf(f, "</head>\n");
+    fprintf(f, "<body>\n");
+
+    fprintf(f, "<h1>Vista previa del archivo de ataque</h1>\n");
+    fprintf(f, "<p>Grilla de %d x %d con el ataque cargado en memoria (x en horizontal, y en vertical). ", FILAS, COLUMNAS);
+    fprintf(f, "Pase el mouse sobre una celda para ver su orden completa. Registros cargados: %d.</p>\n", cantidad);
+
+    fprintf(f, "<div class=\"leyenda\">\n");
+    fprintf(f, "<div><span class=\"marca despegue\"></span>Despegue</div>\n");
+    fprintf(f, "<div><span class=\"marca aterrizaje\"></span>Aterrizaje</div>\n");
+    fprintf(f, "<div><span class=\"marca granada1\"></span>Granada 1</div>\n");
+    fprintf(f, "<div><span class=\"marca granada2\"></span>Granada 2</div>\n");
+    fprintf(f, "<div><span class=\"marca kamikaze\"></span>Ataque kamikaze</div>\n");
+    fprintf(f, "<div><span class=\"marca espera\"></span>Espera</div>\n");
+    fprintf(f, "<div><span class=\"marca mover\"></span>Movimiento</div>\n");
+    fprintf(f, "</div>\n");
+
+    fprintf(f, "<div class=\"contenedor\">\n");
+    fprintf(f, "<table class=\"grilla\">\n");
+    fprintf(f, "<thead><tr><th></th>");
+    for (int x = 0; x < FILAS; x++)
+    {
+        fprintf(f, "<th>%d</th>", x);
+    }
+    fprintf(f, "</tr></thead>\n");
+    fprintf(f, "<tbody>\n");
+
+    for (int y = 0; y < COLUMNAS; y++)
+    {
+        fprintf(f, "<tr><th>%d</th>", y);
+
+        for (int x = 0; x < FILAS; x++)
+        {
+            if (orden[x][y].cargada)
+            {
+                fprintf(f, "<td class=\"%s\" title=\"(%d,%d) %s\"></td>", claseOrden(orden[x][y]), x, y, descripcionOrden(orden[x][y]).c_str());
+            }
+            else
+            {
+                fprintf(f, "<td></td>");
+            }
+        }
+
+        fprintf(f, "</tr>\n");
+    }
+
+    fprintf(f, "</tbody>\n");
+    fprintf(f, "</table>\n");
+    fprintf(f, "</div>\n");
+
+    fprintf(f, "<h2>Registros en memoria</h2>\n");
+    fprintf(f, "<table class=\"registros\">\n");
+    fprintf(f, "<thead><tr><th>x</th><th>y</th><th>espera</th><th>granada1</th><th>granada2</th><th>kamikaze</th><th>aterrizaje</th><th>despegue</th><th>siguiente</th></tr></thead>\n");
+    fprintf(f, "<tbody>\n");
+
+    for (int x = 0; x < FILAS; x++)
+    {
+        for (int y = 0; y < COLUMNAS; y++)
+        {
+            if (!orden[x][y].cargada) continue;
+
+            const Orden &o = orden[x][y];
+
+            fprintf(f, "<tr><td>%d</td><td>%d</td><td>%u</td>", x, y, o.espera);
+            fprintf(f, "<td>%s</td><td>%s</td><td>%s</td>", o.soltarGranada1 ? "true" : "false", o.soltarGranada2 ? "true" : "false", o.ataqueKamikaze ? "true" : "false");
+            fprintf(f, "<td>%s</td><td>%s</td>", o.aterrizaje ? "true" : "false", o.despegue ? "true" : "false");
+
+            if (o.aterrizaje || o.ataqueKamikaze)
+            {
+                fprintf(f, "<td>-</td></tr>\n");
+            }
+            else
+            {
+                fprintf(f, "<td>%d,%d</td></tr>\n", o.siguientex, o.siguientey);
+            }
+        }
+    }
+
+    fprintf(f, "</tbody>\n");
+    fprintf(f, "</table>\n");
+    fprintf(f, "</body>\n");
+    fprintf(f, "</html>\n");
+
+    fclose(f);
+
+    cout << endl << "Archivo html generado correctamente." << endl;
 
     esperarEnter();
 }
